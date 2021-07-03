@@ -1,0 +1,177 @@
+* Index
+
+- [[#what][What]]
+- [[#why][Why]]
+- [[#usage][Usage]]
+- [[#internals][Internals]]
+
+* What
+
+This is a bash function to catch name clashes early when passing vars
+to a function /by reference/ i.e. by var name.
+
+* Why
+
+Lets create a function to find difference between the min and the max
+values among a list of numbers. The first arg is a var name for the
+function to store the result to. All the rest are the numbers.
+
+#+begin_src bash
+  range () {
+      [[ $1 == result ]] || local -n result=$1
+
+      local min=$2 max=$2 arg
+      shift 2
+
+      for arg; do
+          if ((arg < min)); then
+              min=$arg
+          elif ((arg > max)); then
+              max=$arg
+          fi
+      done
+
+      ((result = max-min))
+  }
+#+end_src
+
+Lets test it with some result var names:
+
+#+begin_src bash
+  nums=(22 17 3 7 19)
+
+  for var in my_result result min max arg i j n; do
+      range "$var" "${nums[@]}"
+      declare -p "$var"
+  done
+#+end_src
+
+Test output running =./test.sh=:
+
+#+begin_example
+  declare -- my_result="19"
+  declare -- result="19"
+  ./test.sh: line 24: declare: min: not found
+  ./test.sh: line 24: declare: max: not found
+  ./test.sh: line 24: declare: arg: not found
+  declare -- i="19"
+  declare -- j="19"
+  declare -- n="19"
+#+end_example
+
+Evidently, there is a problem with some var names. The issue is
+variable shadowing: when we declare a local var with the same name as
+an already existing var, the local one takes over it until we leave
+the function. In =range()= we used such extra local vars: =min=,
+=max=, =arg=. Running =range()= with any of these names as the first
+arg we encounter shadowing: the =result= var becomes a reference to a
+local var instead of the upper level var.
+
+Since the result var name can be anything, there is no easy way to
+prevent shadowing.
+
+Lets rewrite some parts of the code so that =VARR= can work with it
+(for details see [[#usage][Usage]]):
+
+#+begin_src bash
+  range () {
+      varr "$1"
+
+      [[ $1 == result ]] || {
+          local -n result
+          result=$1
+      }
+
+      local min max arg
+      min=$2 max=$2
+      shift 2
+
+      for arg; do
+          if ((arg < min)); then
+              min=$arg
+          elif ((arg > max)); then
+              max=$arg
+          fi
+      done
+
+      ((result = max-min))
+  }
+#+end_src
+
+Here is the patch:
+
+#+begin_src diff
+   range () {
+  -    [[ $1 == result ]] || local -n result=$1
+  +    varr "$1"
+
+  -    local min=$2 max=$2 arg
+  +    [[ $1 == result ]] || {
+  +        local -n result
+  +        result=$1
+  +    }
+  +
+  +    local min max arg
+  +    min=$2 max=$2
+       shift 2
+
+       for arg; do
+#+end_src
+
+With that =VARR= would check every =local= statement to be executed if
+it contains any protected var names. In such case it would emit an
+error and terminate the script.
+
+Test output running =VARR_ENABLED=y ./test.sh=:
+
+#+begin_example
+  declare -- my_result="19"
+  declare -- result="19"
+  varr on 13: 'min' could be shadowed
+#+end_example
+
+This way we can catch and fix all name clashes while developing the
+script.
+
+* Usage
+
+- source =varr.sh= in your script.
+
+- follow such rules in functions to be protected:
+
+  - use =varr= command to mark some var names protected from shadowing
+    ahead of any =local= statements. It accepts multiple names.
+
+  - only use =local= statements to declare local vars. Feel free to
+    use =declare= for other purposes. =typeset= is obsolete, just dont
+    use it.
+
+  - do not assign values in =local= statements. =VARR= checks for this
+    and emits an error in the case.
+
+- run your script with ~VARR_ENABLED=y~ env var.
+
+By default =VARR= is disabled. In the case all it does is declaring a
+do-nothing stub for =varr= command. Hence there is no need in removing
+=varr= stuff from your /production/ code.
+
+** Env vars
+
++ =VARR_ENABLED= :: =VARR= status. Default: =n=. Enable: =y=.
+
++ =VARR_ERROR= :: exit code in case of errors. Default: =1=.
+
+* Internals
+
+When enabled =VARR= does this:
+
+- enable aliases expansion. =varr= is an alias to =varr_add=
+  function. The alias is used to inject essential local vars ahead of
+  the function call.
+
+- enable functions tracing.
+
+- set a =DEBUG= trap to intercept =local= statements.
+
+There is definitely a performance penalty, do not enable it in
+/production/ code.
