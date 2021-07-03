@@ -73,7 +73,7 @@ if [[ $VARR_ENABLED == y ]]; then
 
             local var
 
-            for var in "$@"; do
+            for var; do
                 if [[ $var != [a-zA-Z_]*([a-zA-Z_0-9]) ]]; then
                     err="'local' statement should only list static var names"
                     break
