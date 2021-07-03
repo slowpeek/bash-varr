@@ -128,7 +128,7 @@ Test output running =VARR_ENABLED=y ./test.sh=:
 #+begin_example
   declare -- my_result="19"
   declare -- result="19"
-  varr on 13: 'min' could be shadowed
+  varr on 13: 'min' could be shadowed; call chain: range
 #+end_example
 
 This way we can catch and fix all name clashes while developing the
