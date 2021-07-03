@@ -150,6 +150,10 @@ script.
   - do not assign values in =local= statements. =VARR= checks for this
     and emits an error in the case.
 
+  - only list static var names in =local= statements. Do not use stuff
+    like =local $a= or =local $(echo a)=. =VARR= checks for this and
+    emits an error in the case.
+
 - run your script with ~VARR_ENABLED=y~ env var.
 
 By default =VARR= is disabled. In the case all it does is declaring a

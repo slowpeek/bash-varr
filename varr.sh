@@ -57,9 +57,8 @@ if [[ $VARR_ENABLED == y ]]; then
 
         [[ $BASH_COMMAND == 'local '* ]] || return 0
 
-        local lineno=$1 err
+        local lineno=$1 err with_chain=n
 
-        # Check for assignments.
         if [[ $BASH_COMMAND == *=* ]]; then
             err="'local' statement should not assign values"
         else
@@ -74,29 +73,34 @@ if [[ $VARR_ENABLED == y ]]; then
 
             local var
 
-            # Check var names vs 'varr_data' list.
             for var in "$@"; do
+                if [[ $var != [a-zA-Z_]*([a-zA-Z_0-9]) ]]; then
+                    err="'local' statement should only list static var names"
+                    break
+                fi
+
                 if [[ -v varr_data[$var] ]]; then
                     err="'$var' could be shadowed"
+                    with_chain=y
                     break
                 fi
             done
-
-            # Append call chain to $err in case of error.
-            if [[ -v err ]]; then
-                local f chain
-                for f in "${FUNCNAME[@]:1}"; do
-                    chain="$f $chain"
-                done
-
-                chain=${chain::-1}
-                chain=${chain#* }
-
-                err+="; call chain: ${chain// / > }"
-            fi
         fi
 
         [[ -v err ]] || return 0
+
+        # Append call chain to $err if asked.
+        if [[ $with_chain == y ]]; then
+            local f chain
+            for f in "${FUNCNAME[@]:1}"; do
+                chain="$f $chain"
+            done
+
+            chain=${chain::-1}
+            chain=${chain#* }
+
+            err+="; call chain: ${chain// / > }"
+        fi
 
         echo "varr on $lineno: $err" >&2
         exit "$VARR_ERROR"
