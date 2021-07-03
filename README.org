@@ -3,6 +3,7 @@
 - [[#what][What]]
 - [[#why][Why]]
 - [[#usage][Usage]]
+- [[#faq][FAQ]]
 - [[#internals][Internals]]
 
 * What
@@ -160,6 +161,12 @@ do-nothing stub for =varr= command. Hence there is no need in removing
 + =VARR_ENABLED= :: =VARR= status. Default: =n=. Enable: =y=.
 
 + =VARR_ERROR= :: exit code in case of errors. Default: =1=.
+
+* FAQ
+
+- Which variable to rename in case of a name clash? :: The upper
+  one. Otherwise it is possible to create another clash in another
+  point of the code which calls the same function.
 
 * Internals
 
