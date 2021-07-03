@@ -57,34 +57,49 @@ if [[ $VARR_ENABLED == y ]]; then
 
         [[ $BASH_COMMAND == 'local '* ]] || return 0
 
-        local lineno=$1
+        local lineno=$1 err
 
         # Check for assignments.
         if [[ $BASH_COMMAND == *=* ]]; then
-            echo "varr on $lineno: 'local' statement should not assign values" >&2
-            exit "$VARR_ERROR"
+            err="'local' statement should not assign values"
+        else
+            # shellcheck disable=SC2086
+            set -- $BASH_COMMAND
+            shift
+
+            # Walk over options.
+            while [[ $1 == -* ]]; do
+                shift
+            done
+
+            local var
+
+            # Check var names vs 'varr_data' list.
+            for var in "$@"; do
+                if [[ -v varr_data[$var] ]]; then
+                    err="'$var' could be shadowed"
+                    break
+                fi
+            done
+
+            # Append call chain to $err in case of error.
+            if [[ -v err ]]; then
+                local f chain
+                for f in "${FUNCNAME[@]:1}"; do
+                    chain="$f $chain"
+                done
+
+                chain=${chain::-1}
+                chain=${chain#* }
+
+                err+="; call chain: ${chain// / > }"
+            fi
         fi
 
-        # shellcheck disable=SC2086
-        set -- $BASH_COMMAND
-        shift
+        [[ -v err ]] || return 0
 
-        # Walk over options.
-        while [[ $1 == -* ]]; do
-            shift
-        done
-
-        local var
-
-        # Check var names vs 'varr_data' list.
-        for var in "$@"; do
-            if [[ -v varr_data[$var] ]]; then
-                echo "varr on $lineno: '$var' could be shadowed" >&2
-                exit "$VARR_ERROR"
-            fi
-        done
-
-        return 0
+        echo "varr on $lineno: $err" >&2
+        exit "$VARR_ERROR"
     }
 
     trap 'varr_check "$LINENO"' DEBUG
