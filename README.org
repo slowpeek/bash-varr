@@ -11,6 +11,8 @@
 This is a bash function to catch name clashes early when passing vars
 to a function /by reference/ i.e. by var name.
 
+Homepage: [[https://github.com/slowpeek/bash-varr]]
+
 * Why
 
 Lets create a function to find difference between the min and the max
@@ -154,7 +156,7 @@ script.
     like =local $a= or =local $(echo a)=. =VARR= checks for this and
     emits an error in the case.
 
-- run your script with ~VARR_ENABLED=y~ env var.
+- run your script with =VARR_ENABLED=y= env var.
 
 By default =VARR= is disabled. In the case all it does is declaring a
 do-nothing stub for =varr= command. Hence there is no need in removing
@@ -162,9 +164,9 @@ do-nothing stub for =varr= command. Hence there is no need in removing
 
 ** Env vars
 
-+ =VARR_ENABLED= :: =VARR= status. Default: =n=. Enable: =y=.
+- =VARR_ENABLED= :: =VARR= status. Default: =n=. Enable: =y=.
 
-+ =VARR_ERROR= :: exit code in case of errors. Default: =1=.
+- =VARR_ERROR= :: exit code in case of errors. Default: =1=.
 
 * FAQ
 
